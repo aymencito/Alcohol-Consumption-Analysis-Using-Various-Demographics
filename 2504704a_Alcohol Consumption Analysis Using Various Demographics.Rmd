@@ -1,0 +1,478 @@
+---
+title: "Alcohol Consumption Analysis Using Various Demographics"
+author: 
+date: 
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+In this study we are interested in analyzing the alcohol consumption patterns across various demographics in England to answer the following research questions:
+
+What explain the differences in the amounts of alcohol consumed per week? 
+
+Do working people drink more ?
+
+Do younger people drink more than older people?
+
+Do men drink more than women?
+
+We are therefore specifically interested in alcohol consumption patterns among various age groups, gender, education and employments. A health survey conducted in England is used for this study. The data set contains several survey question asked to around ten thousand people. Out of these survey questions five are selected for this study. Each of these is discussed below.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+
+library(ggplot2)
+library(tidyverse)
+
+```
+
+
+```{r}
+
+Alcohol = read.table("hse17i_eul_v1.tab", sep = "\t", header = TRUE)[,c(1565,10,7,1339,1345)]
+
+```
+
+
+# Data Description
+The description of each variables is as follows:
+
+1. totalwu: Total units of alcohol/week
+    + Value = -8.0	Label = Don't know
+    + Value = -1.0	Label = Item not applicable
+    + Value = -9.0	Label = Refused/not answered
+
+2. Age35g: Respondent age - grouped, approx 3 year bands for 0-15, 5 year bands 16+
+    + Value = 1.0	Label = 0-1
+    + Value = 2.0	Label = 2-4
+    + Value = 3.0	Label = 5-7
+    + Value = 4.0	Label = 8-10
+    + Value = 5.0	Label = 11-12
+    + Value = 6.0	Label = 13-15
+    + Value = 7.0	Label = 16-19
+    + Value = 8.0	Label = 20-24
+    + Value = 9.0	Label = 25-29
+    + Value = 10.0	Label = 30-34
+    + Value = 11.0	Label = 35-39
+    + Value = 12.0	Label = 40-44
+    + Value = 13.0	Label = 45-49
+    + Value = 14.0	Label = 50-54
+    + Value = 15.0	Label = 55-59
+    + Value = 16.0	Label = 60-64
+    + Value = 17.0	Label = 65-69
+    + Value = 18.0	Label = 70-74
+    + Value = 19.0	Label = 75-79
+    + Value = 20.0	Label = 80-84
+    + Value = 21.0	Label = 85-89
+    + Value = 22.0	Label = 90+
+
+3. Sex: Gender
+    + Value = 1.0	Label = Male
+    + Value = 2.0	Label = Female
+    + Value = -9.0	Label =  Refused 
+    + Value = -8.0	Label = Don't know
+    + Value = -1.0	Label = Not applicable
+
+4. topqual3: Highest Educational Qualification
+    + Value = 1.0	Label = NVQ4/NVQ5/Degree or equiv
+    + Value = 2.0	Label = Higher ed below degree
+    + Value = 3.0	Label = NVQ3/GCE A Level equiv
+    + Value = 4.0	Label = NVQ2/GCE O Level equiv
+    + Value = 5.0	Label = NVQ1/CSE other grade equiv
+    + Value = 6.0	Label = Foreign/other
+    + Value = 7.0	Label = No qualification
+    + Value = -9.0	Label = Refused
+    + Value = -8.0	Label = Don't know
+    + Value = -1.0	Label = Not applicable
+
+    
+5. nssec8: NS-SEC 8 variable classification (individual)
+    + Value = 1.0	Label = Higher managerial and professional occupations
+    + Value = 2.0	Label = Lower managerial and professional occupations
+    + Value = 3.0	Label = Intermediate occupations
+    + Value = 4.0	Label = Small employers and own account workers
+    + Value = 5.0	Label = Lower supervisory and technical occupations
+    + Value = 6.0	Label = Semi-routine occupations
+    + Value = 7.0	Label = Routine occupations
+    + Value = 8.0	Label = Never worked and long term unemployed
+    + Value = 99.0	Label = Other
+    + Value = -9.0	Label = Refused
+    + Value = -8.0	Label = Don't know
+    + Value = -1.0	Label = Not applicable
+
+To keep the analysis simple, we will remove all negative values which refer to "refused to answer", "Don't Know" or "Not Applicable" answers. These values do not provide us with any information and should not be part of the analysis.
+
+```{r}
+
+# Remove negative numbers
+Alcohol = Alcohol[apply(Alcohol > 0,1, all),]
+
+#  Converting to factor
+Alcohol$Age35g = as.factor(Alcohol$Age35g)
+Alcohol$Sex = as.factor(Alcohol$Sex)
+Alcohol$topqual3 = as.factor(Alcohol$topqual3)
+Alcohol$nssec8 = as.factor(Alcohol$nssec8)
+
+```
+
+# Summary Statistics
+
+The  table below shows the summary of the five independent variables that will be used for this analysis. The *totalwu* variable, which records the alcohol consumption of the respondent per week has the highest value of 252 units and a mean value of 11.7 units. The *Age35g* variable which represent participants age groups reveal that most of the respondents in the final data set are within age range between 55 and 59. As regard to participants *sex* the number of male and female respondents is almost equal and in term of Education*topqual3* the majority of participants are within level NVQ4/NVQ5 qualification degree of equivalent. and finally in term of employment *nssec8* most of the respondents occupy lower managers and professionals positions.
+```{r}
+
+summary(Alcohol)
+
+```
+# Data Visualizations
+
+## Alcohol Consumption
+
+The alcohol consumption histogram below shows that most of the respondents have almost zero alcohol consumption. And very few people have a high alcohol consumption. The data seems heteroscedastic with more respondents having low alcohol consumption. While formulating a regression model, we might have to take a log of the dependent variable.
+
+```{r message=FALSE}
+
+ggplot(data = Alcohol)+
+    geom_histogram(aes(totalwu))
+
+```
+## Age
+
+As we removed records with negative values. Respondents with age less than 16 has been also removed given their  *totalwu* had negative values value and they are under the legal age of drinking Alcohol with supervision of an adults. Therefore the histogram below shows the age groups from 16 to 90+. The plot is almost like normal distribution with most of the respondents in the age range of 40 to 60.
+```{r message=FALSE}
+ggplot(data = Alcohol)+
+    geom_bar(aes(Age35g)) + scale_x_discrete(labels = c("7"="16-19", "8" = "20-24", "9" = "25-29", "10" = "30-34",
+                                                        "11" = "35-39", "12" = "40-44", "13" = "45-49", "14" = "50-54", "15" = "55-59", "16" = "60-64", "17" = "65-69", "18" = "70-74", "19" = "75-79", "20" = "80-84", "21" = "85-89", "22" = "90+"))
+```
+## Sex
+
+There are more females than males in the survey. However, the difference is small and will not cause any biases in our analysis.
+```{r message=FALSE}
+ggplot(data = Alcohol)+
+    geom_bar(aes(Sex)) + scale_x_discrete(labels = c("1"="Male", "2" = "Female"))
+
+```
+## Education
+
+This variable shows very interesting patterns. Most of the respondents have a NVQ4/NVQ5 degree and population of respondents who have done O level is also high. The third most frequent type of respondents have no qualifications.
+```{r message=FALSE}
+ggplot(data = Alcohol)+
+    geom_bar(aes(topqual3)) + scale_x_discrete(labels = c("1"="NVQ4/NVQ5", "2" = "Higher ed", "3" = "A Level", 
+       "4" = "O Level", "5" = "CSE" , "6" = "Foreign", "7" = "No qualification"))
+
+
+```
+## Employment
+
+More that half of the respondents are employed. After that most of the rest of the respondents are retired and get pension. Some respondents also just look after their families.
+
+```{r message=FALSE}
+ggplot(data = Alcohol)+
+    geom_bar(aes(nssec8))+ scale_x_discrete(labels = c("1"="Higher managerial", "2" = "Lower managerial", "3" = "Intermediate", 
+   "4" = "Small employers", "5" = "Lower supervisory" , "6" = "Semi-routine occupations", "7" = "Routine occupations", "8" = "Never worked", "99" = "Other"))+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+# Bivariate Associations
+
+## Alcohol Consumption vs Age
+
+The hex plot below shows that middle aged group of respondents have the highest alcohol consumers. Both children s and senior citizens have low alcohol consumption.
+
+```{r}
+
+ggplot(data = Alcohol) + 
+    geom_hex(aes(x = Age35g, y = totalwu))+ scale_x_discrete(labels = c("7"="16-19", "8" = "20-24", "9" = "25-29", "10" = "30-34", "11" = "35-39", "12" = "40-44", "13" = "45-49", "14" = "50-54", "15" = "55-59", "16" = "60-64", "17" = "65-69", "18" = "70-74", "19" = "75-79", "20" = "80-84", "21" = "85-89", "22" = "90+"))
+```
+## Alcohol Consumption vs Sex
+
+It can be observed that males have the highest alcohol consumers and alcohol consumption intensities in between are also dominated by males. Females have relatively low alcohol consumption.
+
+```{r}
+Alcohol <- mutate(Alcohol,Sex = factor(Sex,
+                                     levels=1:2,
+                                     labels=c("Male","Female")))
+
+
+```
+
+
+```{r}
+
+ggplot(data = Alcohol) + 
+    geom_boxplot(aes(x = Sex, y = totalwu,fill=Sex)) + scale_x_discrete(labels = c("1"="Male", "2" = "Female"))
+
+```
+## Alcohol Consumption vs Education
+
+It can be seen that respondents with no qualification tend to consume more alcohol than the other respondents. The vast majority of respondants with foreign education are females.
+
+```{r}
+
+ggplot(data = Alcohol) + 
+    geom_jitter(aes(x = topqual3, y = totalwu,col=Sex)) + scale_x_discrete(labels = c("1"="NVQ4/NVQ5", "2" = "Higher ed", "3" = "A Level", 
+                                                          "4" = "O Level", "5" = "CSE" , "6" = "Foreign", "7" = "No qualification"))
+
+```
+## Alcohol Consumption vs Employment
+
+There is no apparent pattern in the plot below. However, small employees and Routine occupations have the respondents with highest alcohol consumption.We can also notice there more females participants in intermediate and Semi-routine occupations.
+
+```{r}
+
+ggplot(data = Alcohol) + 
+    geom_jitter(aes(x = nssec8, y = totalwu,col=Sex))+ scale_x_discrete(labels = c("1"="Higher managerial", "2" = "Lower managerial", "3" = "Intermediate", 
+                                                          "4" = "Small employers", "5" = "Lower supervisory" , "6" = "Semi-routine occupations", 
+                                                       "7" = "Routine occupations", "8" = "Never worked", "99" = "Other"))+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+# Hypothesis Test
+
+## Sex
+
+The gender of the respondents does matter in modelling the alcohol consumption. The P-value is less or equal to 0.05 it means that gender is statistically significant and we reject the null hypothesis that gender has no effect on the alcohol consumption of the respondent.
+
+```{r}
+
+t.test(totalwu~Sex, data = Alcohol)
+
+
+```
+
+# Regression Model
+
+## Model 1
+
+The model below shows a simple regression model using all the independent variables mentioned above. However, this model does not have high prediction power. The $R^2$ of the model is low and explain 5% of variance of the percentage Alcohol units consumption in respondents. However, it does not mean that this model is necessarily bad as the $R^2$ is usually tend to be lower when using survey data. The P-value for the F test in below 0.5 thus our overall model is statistically significant.However, the residuals seems to have a very high range which goes from -21 up to 236. This means we should reiterate our model.But before jump to conclusion we will run some diagnostic tests to check our model.
+
+```{r}
+
+lm_model = lm(totalwu~., data = Alcohol)
+
+summary(lm_model)
+
+```
+#Diagnostic tests
+
+We start by looking at our fitted values versus residuals. The fitted value is what the model predict for the total amount of alcohol consumption per week based on all independent variable in our model.
+in our plot we can see that the points spread widely around the zero line and appears there are rather more positive than negative points. Some of the residual have very high values of alcohol units consumption. 
+
+```{r}
+
+plot(lm_model,which=1)
+
+```
+To understand what going on. We had look at a residuals versus leverage plot to see if we have any significant outliers.We have some points with high residual.However, they are not on the right top or lower corners and no points are outside the cooks distance therefore they don't have influence regression. 
+
+```{r}
+plot(lm_model,which=5)
+
+```
+##Ramsey RESET Test
+
+The P-value is less than 0.05 so we reject the null hypothesis. and it therefore we conclude we violate some of the assumptions.Therefore we assume to have some problem with our model.
+.
+
+```{r}
+library(lmtest)
+
+resettest(lm_model)
+
+```
+## Breusch-Pagan Test
+
+We can see the P-value is below 0.05 thus we reject the null and conclude we have heteroscedasticity.
+
+```{r}
+bptest(lm_model,studentize = FALSE)
+
+```
+
+ We looked further to see if the residuals of the model follow a normal distribution.The histogram of the residuals don't follow the normal distribution.Given the right tail of the distribution.
+
+```{r}
+
+hist(lm_model$residuals)
+
+```
+We also used QQ plot to determine  the distribution of residuals and it seems is not normally distributed as we can see the points are rising away from the line. The residuals are therefore not normally distributed.
+
+```{r}
+
+plot(lm_model,which=2)
+
+```
+# Model 2
+
+In this new model we have again used all independent variables but we have use the logarithmic transformation (log) of our dependent variable. We start by looking at the plot of the data to illustrate the effect of the logarithmic transformation.This could help with problems of non-linearity and with the distribution of the residuals.
+
+```{r}
+library(tidyverse)
+Alcohol%>%
+ggplot(aes(totalwu)) + geom_histogram() + xlab("Alcohol consumption per week  (Units)")
+
+```
+```{r}
+Alcohol%>%
+ggplot(aes(log(totalwu))) + geom_histogram() + xlab("Alcohol consumption per week  (Units)")
+```
+In this model we noticed the residuals have considerably decreased and the $R^2$ have improved. However, it can be observed that education does not seem to have a very high prediction power as all of the attributes have a p-value greater than 0.05. 
+
+```{r}
+
+lm_model2 = lm(log(totalwu)~., data = Alcohol)
+
+summary(lm_model2)
+
+
+```
+## Model 3
+
+The independent variables in this model are quite significant as age, sex and employment have p-values lower than 0.05. The residuals are still quite low. In fact the maximum residuals have decreased compared to above models. The model equation is :
+
+$$ log(Alcohol Consumption) = \beta_o + \beta_1 Age + \beta_2 Sex + \beta_3 Employment $$
+In this model we have use the (log) of our dependent variable and  we decide to drop Education variable $topqual3$ as we think it is irrelevant.
+
+```{r}
+
+lm_model3 = lm(log(totalwu)~.-topqual3, data = Alcohol)
+
+summary(lm_model3)
+
+
+```
+## Regression Assumptions
+
+# Correctly specified
+
+As we can see now  we have relatively equal points above and below the zero line with no clear signs of non-linearity which shows that the model is correctly specified.
+
+```{r}
+
+plot(lm_model3,which=1)
+
+```
+## Normal Q-Q Plot
+
+We can see a lot of improvement in the distribution of the residuals.The plot shows that the errors deviate from the normal distribution.
+
+```{r}
+
+plot(lm_model3,which=2)
+
+```
+##specification and heteroscedasticity tests 
+
+# Breusch-Pagan test
+
+We reject the null hypothesis of Homoscedasticity and conclude that we have hetroscedasticity as the Breusch-Pagan test shows a p-value of less than 0.05.
+
+```{r}
+
+library(lmtest)
+library(sandwich)
+
+bptest(lm_model3)
+
+
+```
+Our test still failed the resettest again. However,I am satisfied with the model as suspect that outliers values of people who consume excessive amounts of alcohol per week.
+
+```{r}
+
+resettest(lm_model3)
+```
+Since we have more than independent variable we it is good to check for multidisciplinary.Looking back to result it doesn't seems we have symptoms of multidisciplinary.
+
+```{r}
+library(car)
+vif(lm_model3)
+```
+
+## Coefficient Test
+
+
+The coefficient test indicate that most of the coefficients are significant.
+
+```{r}
+
+
+coeftest(lm_model3, vcov = vcovHC(lm_model3))
+
+```
+
+##  Normally Distributed Residuals
+
+The histogram of residuals shows an approximate normal distribution with a slightly long tail on one end.
+
+```{r}
+
+hist(lm_model3$residuals)
+
+```
+
+```{r}
+
+summary(lm_model3)
+
+
+```
+## Findings
+
+After this analysis we can answer the research question accordingly:
+
+#What explain the differences in the amounts of alcohol consumed per week? 
+
+As regard to our last model.It generally appear that the amount of Alcohol consumption per week is highly influenced by age, sex and employment variables. 
+
+#1.Do working people drink more?
+
+It generally appears that unemployed people consumed around (0.80) less units of Alcohol per week compared to rest of professional people and it is statistically significant. This perhaps can be explained by the fact that working people can afford to buy more Alcohol compared to people who are unemployed or never work but we don't have an deviance to support this  assumption. The result also  suggest that people in Lower managerial occupations consume more than other professionals in average, however the result is not statistically significant.Subsequently,our model suggest that the unit of Alcohol consumption per week relative to working people varies by the following factors::
+
+```{r}
+
+Employment_coef = data.frame(Factor = exp(lm_model3$coefficients[18:25]), Employment = levels(Alcohol$nssec8)[-1])
+ggplot(Employment_coef)+
+  geom_bar(aes(x = Employment, y = Factor ), stat="identity")+ scale_x_discrete(labels = c("1"="Higher managerial", "2" = "Lower managerial", "3" = "Intermediate","4" = "Small employers", "5" = "Lower supervisory" , "6" = "Semi-routine occupations","7" = "Routine occupations", "8" ="Never worked", "99" = "Other"))+theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+#2.Do younger people drink more than older people?
+
+Our model suggest that people in middle ages between 45-60 consume more units of alcohol per week compared to people in all other age groups. As the age of the respondent increases the alcohol consumption decreases. However, there is an increase in alcohol consumption senior citizens as it appears that people in age group between (60-64) consume 0.08 more units of alcohol per week on average compared to people in age groups from 30-45 years old.
+Relative to age group of 16-19, the alcohol consumption of the respondents changes by the following factors:
+
+```{r}
+
+Age_coef = data.frame(Factor = exp(lm_model3$coefficients[2:16]),
+                              Age = levels(Alcohol$Age35g)[-1])
+
+ggplot(Age_coef)+
+  geom_bar(aes(x = Age, y = Factor ), stat="identity")+ scale_x_discrete(labels = c("7"="16-19", "8" = "20-24", "9" = "25-29", "10" = "30-34", "11" = "35-39", "12" = "40-44", "13" = "45-49", "14" = "50-54", "15" = "55-59", "16" = "60-64", "17" = "65-69", "18" = "70-74", "19" = "75-79", "20" = "80-84", "21" = "85-89", "22" = "90+"))+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+#3.Do men drink more than women?
+
+
+Men drink more than women on average. Generally If the respondent is a woman, alcohol consumption decrees by a factor of `r as.vector(exp(lm_model3$coefficients[17])). 
+
+
+
+
+
+
+
+
+
+
+
+
+
